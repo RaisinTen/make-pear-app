@@ -80,7 +80,7 @@ runs:
           security list-keychain -d user -s $KEYCHAIN_PATH
 
           # add notarytool credentials
-          xcrun notarytool store-credentials "notary" --key "$APIKEY_PATH" --key-id S3AG2UXSC5 --issuer 2067dae8-140d-4016-9a2b-d6ea80a20708
+          xcrun notarytool store-credentials "notary" --key "$APIKEY_PATH" --key-id ${{ inputs.apikey_id }} --issuer ${{ inputs.apikey_issuer }}
 
           # apply provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
@@ -112,7 +112,7 @@ runs:
           npm install @actions/artifact@2.3.2 --global
           echo "NODE_PATH=$(npm root --quiet -g)" >> $GITHUB_ENV
     - name: "Install @actions/artifact module (Windows)"
-        if: ${{ runner.os != 'Windows' }}
+        if: ${{ runner.os == 'Windows' }}
         run: |
           npm install @actions/artifact@2.3.2 --global
           $npmRoot = npm root --quiet -g
