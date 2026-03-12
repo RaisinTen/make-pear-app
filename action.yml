@@ -2,23 +2,23 @@ name: 'Make Pear Apps'
 description: 'Action for making Pear apps'
 inputs:
   macos_certificate_base64:
-    description: 'Base64 Apple distribution certificate'
+    description: 'Base64-encoded Apple distribution certificate (P12 format)'
     required: false
     default: ''
   macos_p12_password:
-    description: 'Password for Apple certificate'
+    description: 'Password for the P12 certificate'
     required: false
     default: ''
   macos_provisioning_profile_base64:
-    description: 'Base64 macOS provisioning profile'
+    description: 'Base64-encoded macOS provisioning profile (.provisionprofile)'
     required: false
     default: ''
   macos_keychain_password:
-    description: 'Keychain password'
+    description: 'Temporary password for the macOS keychain'
     required: false
     default: ''
   macos_api_key_base64:
-    description: 'Base64 macOS API key'
+    description: 'Base64-encoded Apple API key (.p8) for notarization'
     required: false
     default: ''
   macos_api_key_id:
@@ -30,11 +30,11 @@ inputs:
     required: false
     default: ''
   macos_codesign_identity:
-    description: 'macOS codesign identity'
+    description: 'Code signing identity used for macOS builds'
     required: false
     default: ''
   windows_subject:
-    description: 'Windows code signing certificate subject'
+    description: 'Subject of the Windows code signing certificate'
     required: false
     default: ''
   windows_thumbprint:
