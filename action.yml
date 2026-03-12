@@ -1,43 +1,43 @@
 name: 'Make Pear Apps'
 description: 'Action for making Pear apps'
 inputs:
-  build_certificate_base64:
+  macos_certificate_base64:
     description: 'Base64 Apple distribution certificate'
     required: false
     default: ''
-  p12_password:
+  macos_p12_password:
     description: 'Password for Apple certificate'
     required: false
     default: ''
-  build_provision_profile_base64:
-    description: 'Base64 Apple provisioning profile'
+  macos_provisioning_profile_base64:
+    description: 'Base64 macOS provisioning profile'
     required: false
     default: ''
-  keychain_password:
-    description: 'Temporary keychain password'
+  macos_keychain_password:
+    description: 'Keychain password'
     required: false
     default: ''
-  apikey_base64:
-    description: 'Base64 Apple API key'
+  macos_api_key_base64:
+    description: 'Base64 macOS API key'
     required: false
     default: ''
-  apikey_id:
-    description: 'Apple API Key ID'
+  macos_api_key_id:
+    description: 'macOS API Key ID'
     required: false
     default: ''
-  apikey_issuer:
-    description: 'Apple API Key issuer ID'
+  macos_api_key_issuer:
+    description: 'macOS API Key issuer ID'
     required: false
     default: ''
   macos_codesign_identity:
     description: 'macOS codesign identity'
     required: false
     default: ''
-  win_subject:
+  windows_subject:
     description: 'Windows code signing certificate subject'
     required: false
     default: ''
-  win_thumbprint:
+  windows_thumbprint:
     description: 'Thumbprint of the Windows code signing certificate'
     required: false
     default: ''
@@ -45,15 +45,15 @@ runs:
   using: composite
   steps:
     - name: 'Validate macOS inputs'
-      if: ${{ runner.os == 'macOS' && (inputs.build_certificate_base64 == '' || inputs.p12_password == '' || inputs.build_provision_profile_base64 == '' || inputs.keychain_password == '' || inputs.apikey_base64 == '' || inputs.apikey_id == '' || inputs.apikey_issuer == '' || inputs.macos_codesign_identity == '') }}
+      if: ${{ runner.os == 'macOS' && (inputs.macos_certificate_base64 == '' || inputs.macos_p12_password == '' || inputs.macos_provisioning_profile_base64 == '' || inputs.macos_keychain_password == '' || inputs.macos_api_key_base64 == '' || inputs.macos_api_key_id == '' || inputs.macos_api_key_issuer == '' || inputs.macos_codesign_identity == '') }}
       run: |
-        echo "Error: On macOS, build_certificate_base64, p12_password, build_provision_profile_base64, keychain_password, apikey_base64, apikey_id, apikey_issuer and macos_codesign_identity are required."
+        echo "Error: On macOS, macos_certificate_base64, macos_p12_password, macos_provisioning_profile_base64, macos_keychain_password, macos_api_key_base64, macos_api_key_id, macos_api_key_issuer and macos_codesign_identity are required."
         exit 1
       shell: bash
     - name: 'Validate Windows inputs'
-      if: ${{ runner.os == 'Windows' && (inputs.win_subject == '' || inputs.win_thumbprint == '') }}
+      if: ${{ runner.os == 'Windows' && (inputs.windows_subject == '' || inputs.windows_thumbprint == '') }}
       run: |
-        Write-Error "Error: On Windows, win_subject and win_thumbprint are required."
+        Write-Error "Error: On Windows, windows_subject and windows_thumbprint are required."
         exit 1
       shell: pwsh
     - uses: actions/setup-node@v4
@@ -77,22 +77,22 @@ runs:
         APIKEY_PATH=$RUNNER_TEMP/AuthKey.p8
 
         # import certificate and provisioning profile from secrets
-        echo -n "${{ inputs.build_certificate_base64 }}" | base64 --decode -o $CERTIFICATE_PATH
-        echo -n "${{ inputs.build_provision_profile_base64 }}" | base64 --decode -o $PP_PATH
-        echo -n "${{ inputs.apikey_base64 }}" | base64 --decode -o $APIKEY_PATH
+        echo -n "${{ inputs.macos_certificate_base64 }}" | base64 --decode -o $CERTIFICATE_PATH
+        echo -n "${{ inputs.macos_provisioning_profile_base64 }}" | base64 --decode -o $PP_PATH
+        echo -n "${{ inputs.macos_api_key_base64 }}" | base64 --decode -o $APIKEY_PATH
 
         # create temporary keychain
-        security create-keychain -p "${{ inputs.keychain_password }}" $KEYCHAIN_PATH
+        security create-keychain -p "${{ inputs.macos_keychain_password }}" $KEYCHAIN_PATH
         security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-        security unlock-keychain -p "${{ inputs.keychain_password }}" $KEYCHAIN_PATH
+        security unlock-keychain -p "${{ inputs.macos_keychain_password }}" $KEYCHAIN_PATH
 
         # import certificate to keychain
-        security import $CERTIFICATE_PATH -P "${{ inputs.p12_password }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-        security set-key-partition-list -S apple-tool:,apple: -k "${{ inputs.keychain_password }}" $KEYCHAIN_PATH
+        security import $CERTIFICATE_PATH -P "${{ inputs.macos_p12_password }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple: -k "${{ inputs.macos_keychain_password }}" $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
 
         # add notarytool credentials
-        xcrun notarytool store-credentials 'notary' --key "$APIKEY_PATH" --key-id "${{ inputs.apikey_id }}" --issuer "${{ inputs.apikey_issuer }}"
+        xcrun notarytool store-credentials 'notary' --key "$APIKEY_PATH" --key-id "${{ inputs.macos_api_key_id }}" --issuer "${{ inputs.macos_api_key_issuer }}"
 
         # apply provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
@@ -113,8 +113,8 @@ runs:
     - name: 'Build application (Windows)'
       if: ${{ runner.os == 'Windows' }}
       env:
-        WIN_SUBJECT: "${{ inputs.win_subject }}"
-        WIN_THUMBPRINT: "${{ inputs.win_thumbprint }}"
+        WIN_SUBJECT: "${{ inputs.windows_subject }}"
+        WIN_THUMBPRINT: "${{ inputs.windows_thumbprint }}"
       run: |
         npm run make
       shell: pwsh
