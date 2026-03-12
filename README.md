@@ -62,8 +62,8 @@ jobs:
           macos_provisioning_profile_base64: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
           macos_keychain_password: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
           macos_api_key_base64: ${{ secrets.APPLE_APIKEY }}
-          macos_api_key_id: S3AG2UXSC5
-          macos_api_key_issuer: 2067dae8-140d-4016-9a2b-d6ea80a20708
+          macos_api_key_id: ${{ secrets.APPLE_APIKEY_ID }}
+          macos_api_key_issuer: ${{ secrets.APPLE_APIKEY_ISSUER }}
           macos_codesign_identity: ${{ secrets.MAC_CODESIGN_IDENTITY }}
 ```
 
