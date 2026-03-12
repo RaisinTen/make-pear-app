@@ -21,6 +21,14 @@ inputs:
     description: "Base64 Apple API key"
     required: false
     default: ""
+  apikey_id:
+    description: "Apple API Key ID"
+    required: false
+    default: ""
+  apikey_issuer:
+    description: "Apple API Key issuer ID"
+    required: false
+    default: ""
   macos_codesign_identity:
     description: "macOS codesign identity"
     required: false
@@ -97,7 +105,7 @@ runs:
           WIN_THUMBPRINT: ${{ inputs.win_thumbprint }}
         run: |
           npm run make
-        shell: bash
+        shell: pwsh
     - name: "Install @actions/artifact module (Linux/macOS)"
         if: ${{ runner.os != 'Windows' }}
         run: |
