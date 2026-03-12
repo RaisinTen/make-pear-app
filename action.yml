@@ -45,16 +45,32 @@ runs:
   using: composite
   steps:
     - name: 'Validate macOS inputs'
-      if: ${{ runner.os == 'macOS' && (inputs.macos_certificate_base64 == '' || inputs.macos_p12_password == '' || inputs.macos_provisioning_profile_base64 == '' || inputs.macos_keychain_password == '' || inputs.macos_api_key_base64 == '' || inputs.macos_api_key_id == '' || inputs.macos_api_key_issuer == '' || inputs.macos_codesign_identity == '') }}
+      if: ${{ runner.os == 'macOS' }}
       run: |
-        echo "Error: On macOS, macos_certificate_base64, macos_p12_password, macos_provisioning_profile_base64, macos_keychain_password, macos_api_key_base64, macos_api_key_id, macos_api_key_issuer and macos_codesign_identity are required."
-        exit 1
+        MISSING=""
+        [ -z "${{ inputs.macos_certificate_base64 }}" ] && MISSING="$MISSING macos_certificate_base64"
+        [ -z "${{ inputs.macos_p12_password }}" ] && MISSING="$MISSING macos_p12_password"
+        [ -z "${{ inputs.macos_provisioning_profile_base64 }}" ] && MISSING="$MISSING macos_provisioning_profile_base64"
+        [ -z "${{ inputs.macos_keychain_password }}" ] && MISSING="$MISSING macos_keychain_password"
+        [ -z "${{ inputs.macos_api_key_base64 }}" ] && MISSING="$MISSING macos_api_key_base64"
+        [ -z "${{ inputs.macos_api_key_id }}" ] && MISSING="$MISSING macos_api_key_id"
+        [ -z "${{ inputs.macos_api_key_issuer }}" ] && MISSING="$MISSING macos_api_key_issuer"
+        [ -z "${{ inputs.macos_codesign_identity }}" ] && MISSING="$MISSING macos_codesign_identity"
+        if [ -n "$MISSING" ]; then
+          echo "Error: Missing macOS inputs:$MISSING"
+          exit 1
+        fi
       shell: bash
     - name: 'Validate Windows inputs'
-      if: ${{ runner.os == 'Windows' && (inputs.windows_subject == '' || inputs.windows_thumbprint == '') }}
+      if: ${{ runner.os == 'Windows' }}
       run: |
-        Write-Error "Error: On Windows, windows_subject and windows_thumbprint are required."
-        exit 1
+        $missing = @()
+        if ([string]::IsNullOrEmpty("${{ inputs.windows_subject }}")) { $missing += "windows_subject" }
+        if ([string]::IsNullOrEmpty("${{ inputs.windows_thumbprint }}")) { $missing += "windows_thumbprint" }
+        if ($missing.Count -gt 0) {
+          Write-Error "Error: Missing Windows inputs: $($missing -join ', ')"
+          exit 1
+        }
       shell: pwsh
     - uses: actions/setup-node@v4
     - name: 'Install dependencies (Linux/macOS)'
