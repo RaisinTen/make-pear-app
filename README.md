@@ -4,6 +4,12 @@ GitHub Action to build Pear apps on Linux, macOS, and Windows, with code signing
 
 ## Inputs
 
+### Build Inputs
+
+| Input | Description | Required |
+|-------|------------|----------|
+| `channel` | Channel name (e.g. `preview`, `experimental`, `staging`) | Yes |
+
 ### macOS
 
 | Input | Description | Required |
@@ -30,9 +36,9 @@ Linux builds require no inputs.
 
 ## Outputs
 
-- All files in the `out/make` folder are uploaded as artifacts.  
-- Each file is uploaded individually using its basename.  
-- Artifacts can be downloaded from the workflow run summary.
+| Output | Description |
+|-------|------------|
+| `artifact-links` | Links to the uploaded artifacts from the `out/make` folder. Each file is uploaded individually and the link can be used in workflow notifications (e.g., Slack, Teams). |
 
 ## Usage
 
@@ -42,9 +48,14 @@ Linux builds require no inputs.
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    outputs:
+      artifact-links: ${{ steps.build.outputs.artifact-links }}
     steps:
       - uses: actions/checkout@v4
       - uses: holepunchto/make-pear-app
+        id: build
+        with:
+            channel: experimental
 ```
 
 ### macOS
@@ -53,10 +64,14 @@ jobs:
 jobs:
   build-macos:
     runs-on: macos-latest
+    outputs:
+      artifact-links: ${{ steps.build.outputs.artifact-links }}
     steps:
       - uses: actions/checkout@v4
       - uses: holepunchto/make-pear-app
+        id: build
         with:
+          channel: preview
           macos_certificate_base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
           macos_p12_password: ${{ secrets.APPLE_P12_PASSWORD }}
           macos_provisioning_profile_base64: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
@@ -73,10 +88,14 @@ jobs:
 jobs:
   build-win32:
     runs-on: self-hosted
+    outputs:
+      artifact-links: ${{ steps.build.outputs.artifact-links }}
     steps:
       - uses: actions/checkout@v4
       - uses: holepunchto/make-pear-app
+        id: build
         with:
+          channel: stage
           windows_subject: ${{ secrets.WIN_SUBJECT }}
           windows_thumbprint: ${{ secrets.WIN_THUMBPRINT }}
 ```

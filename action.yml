@@ -1,6 +1,9 @@
 name: 'Make Pear Apps'
 description: 'Action for making Pear apps'
 inputs:
+  channel:
+    description: 'Channel name'
+    required: true
   macos_certificate_base64:
     description: 'Base64-encoded Apple distribution certificate (P12 format)'
     required: false
@@ -41,6 +44,10 @@ inputs:
     description: 'Thumbprint of the Windows code signing certificate'
     required: false
     default: ''
+outputs:
+  artifact-links:
+    description: 'Links to uploaded artifacts'
+    value: ${{ steps.upload-artifacts-bash.outputs.artifact_links || steps.upload-artifacts-pwsh.outputs.artifact_links }}
 runs:
   using: composite
   steps:
@@ -73,13 +80,20 @@ runs:
         }
       shell: pwsh
     - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        registry-url: 'https://npm.pkg.github.com'
     - name: 'Install dependencies (Linux/macOS)'
       if: ${{ runner.os != 'Windows' }}
+      env:
+        NODE_AUTH_TOKEN: ${{ github.token }}
       run: |
         npm install
       shell: bash
     - name: 'Install dependencies (Windows)'
       if: ${{ runner.os == 'Windows' }}
+      env:
+        NODE_AUTH_TOKEN: ${{ github.token }}
       run: |
         npm install
       shell: pwsh
@@ -116,12 +130,15 @@ runs:
       shell: bash
     - name: 'Build application (Linux)'
       if: ${{ runner.os == 'Linux' }}
+      env:
+        CHANNEL: "${{ inputs.channel }}"
       run: |
         npm run make
       shell: bash
     - name: 'Build application (macOS)'
       if: ${{ runner.os == 'macOS' }}
       env:
+        CHANNEL: "${{ inputs.channel }}"
         MAC_CODESIGN_IDENTITY: "${{ inputs.macos_codesign_identity }}"
       run: |
         npm run make
@@ -129,6 +146,7 @@ runs:
     - name: 'Build application (Windows)'
       if: ${{ runner.os == 'Windows' }}
       env:
+        CHANNEL: "${{ inputs.channel }}"
         WIN_SUBJECT: "${{ inputs.windows_subject }}"
         WIN_THUMBPRINT: "${{ inputs.windows_thumbprint }}"
       run: |
@@ -150,44 +168,26 @@ runs:
     - name: 'Extract Actions runtime variables'
       uses: actions/github-script@v7
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         script: |
           core.exportVariable('ACTIONS_RESULTS_URL', process.env['ACTIONS_RESULTS_URL'])
           core.exportVariable('ACTIONS_RUNTIME_URL', process.env['ACTIONS_RUNTIME_URL'])
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env['ACTIONS_RUNTIME_TOKEN'])
-    - name: 'Upload folders as artifacts'
+    - id: upload-artifacts-bash
+      name: 'Upload folders as artifacts (Linux/macOS)'
+      if: ${{ runner.os != 'Windows' }}
       env:
         NODE_PATH: "${{ env.NODE_PATH }}"
-      run: |
-        const fs = require('fs');
-        const path = require('path');
-        const { DefaultArtifactClient } = require('@actions/artifact');
-
-        const artifact = new DefaultArtifactClient()
-
-        function listFilesRecursive(dir) {
-          let results = []
-          const list = fs.readdirSync(dir)
-          list.forEach(function(file) {
-            const filePath = path.join(dir, file)
-            const stat = fs.statSync(filePath)
-            if (stat && stat.isDirectory()) {
-              results = results.concat(listFilesRecursive(filePath))
-            } else if (stat && stat.isFile()) {
-              results.push(filePath)
-            }
-          })
-          return results
-        }
-
-        const files = listFilesRecursive('out/make')
-        files.forEach(file => {
-          const artifactName = path.basename(file)
-          console.log(`Uploading artifact: ${artifactName} from ${file}`)
-          artifact.uploadArtifact(artifactName, [file], './out/make')
-        })
-      shell: node {0}
+      run: node ${{ github.action_path }}/upload-artifacts.cjs
+      shell: bash
+    - id: upload-artifacts-pwsh
+      name: 'Upload folders as artifacts (Windows)'
+      if: ${{ runner.os == 'Windows' }}
+      env:
+        NODE_PATH: "${{ env.NODE_PATH }}"
+      run: node ${{ github.action_path }}/upload-artifacts.cjs
+      shell: pwsh
 branding:
   icon: package
   color: green
