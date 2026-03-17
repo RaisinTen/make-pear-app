@@ -12,18 +12,6 @@ inputs:
     description: 'Password for the P12 certificate'
     required: false
     default: ''
-  macos_api_key_base64:
-    description: 'Base64-encoded Apple API key (.p8) for notarization'
-    required: false
-    default: ''
-  macos_api_key_id:
-    description: 'macOS API Key ID'
-    required: false
-    default: ''
-  macos_api_key_issuer:
-    description: 'macOS API Key issuer ID'
-    required: false
-    default: ''
   macos_codesign_identity:
     description: 'Code signing identity used for macOS builds'
     required: false
@@ -49,9 +37,6 @@ runs:
         MISSING=""
         [ -z "${{ inputs.macos_certificate_base64 }}" ] && MISSING="$MISSING macos_certificate_base64"
         [ -z "${{ inputs.macos_p12_password }}" ] && MISSING="$MISSING macos_p12_password"
-        [ -z "${{ inputs.macos_api_key_base64 }}" ] && MISSING="$MISSING macos_api_key_base64"
-        [ -z "${{ inputs.macos_api_key_id }}" ] && MISSING="$MISSING macos_api_key_id"
-        [ -z "${{ inputs.macos_api_key_issuer }}" ] && MISSING="$MISSING macos_api_key_issuer"
         [ -z "${{ inputs.macos_codesign_identity }}" ] && MISSING="$MISSING macos_codesign_identity"
         if [ -n "$MISSING" ]; then
           echo "Error: Missing macOS inputs:$MISSING"
@@ -93,12 +78,10 @@ runs:
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-        APIKEY_PATH=$RUNNER_TEMP/AuthKey.p8
         KEYCHAIN_PASSWORD=keychain-password
 
-        # import certificate and API key from secrets
+        # import certificate from secrets
         echo -n "${{ inputs.macos_certificate_base64 }}" | base64 --decode -o $CERTIFICATE_PATH
-        echo -n "${{ inputs.macos_api_key_base64 }}" | base64 --decode -o $APIKEY_PATH
 
         # create temporary keychain
         security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
@@ -109,9 +92,6 @@ runs:
         security import $CERTIFICATE_PATH -P "${{ inputs.macos_p12_password }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
-
-        # add notarytool credentials
-        xcrun notarytool store-credentials 'notary' --key "$APIKEY_PATH" --key-id "${{ inputs.macos_api_key_id }}" --issuer "${{ inputs.macos_api_key_issuer }}"
       shell: bash
     - name: 'Build application (Linux)'
       if: ${{ runner.os == 'Linux' }}

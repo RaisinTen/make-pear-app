@@ -16,9 +16,6 @@ GitHub Action to build Pear apps on Linux, macOS, and Windows, with code signing
 |-------|------------|----------|
 | `macos_certificate_base64` | Base64 Apple distribution certificate (P12) | Required on macOS |
 | `macos_p12_password` | Password for the P12 certificate | Required on macOS |
-| `macos_api_key_base64` | Base64 Apple API key (.p8) | Required on macOS |
-| `macos_api_key_id` | Apple API key ID | Required on macOS |
-| `macos_api_key_issuer` | Apple API key issuer ID | Required on macOS |
 | `macos_codesign_identity` | Code signing identity | Required on macOS |
 
 ### Windows
@@ -72,9 +69,6 @@ jobs:
           channel: preview
           macos_certificate_base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
           macos_p12_password: ${{ secrets.APPLE_P12_PASSWORD }}
-          macos_api_key_base64: ${{ secrets.APPLE_APIKEY }}
-          macos_api_key_id: ${{ secrets.APPLE_APIKEY_ID }}
-          macos_api_key_issuer: ${{ secrets.APPLE_APIKEY_ISSUER }}
           macos_codesign_identity: ${{ secrets.MAC_CODESIGN_IDENTITY }}
 ```
 
