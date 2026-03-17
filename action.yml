@@ -12,10 +12,6 @@ inputs:
     description: 'Password for the P12 certificate'
     required: false
     default: ''
-  macos_provisioning_profile_base64:
-    description: 'Base64-encoded macOS provisioning profile (.provisionprofile)'
-    required: false
-    default: ''
   macos_api_key_base64:
     description: 'Base64-encoded Apple API key (.p8) for notarization'
     required: false
@@ -53,7 +49,6 @@ runs:
         MISSING=""
         [ -z "${{ inputs.macos_certificate_base64 }}" ] && MISSING="$MISSING macos_certificate_base64"
         [ -z "${{ inputs.macos_p12_password }}" ] && MISSING="$MISSING macos_p12_password"
-        [ -z "${{ inputs.macos_provisioning_profile_base64 }}" ] && MISSING="$MISSING macos_provisioning_profile_base64"
         [ -z "${{ inputs.macos_api_key_base64 }}" ] && MISSING="$MISSING macos_api_key_base64"
         [ -z "${{ inputs.macos_api_key_id }}" ] && MISSING="$MISSING macos_api_key_id"
         [ -z "${{ inputs.macos_api_key_issuer }}" ] && MISSING="$MISSING macos_api_key_issuer"
@@ -97,14 +92,12 @@ runs:
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-        PP_PATH=$RUNNER_TEMP/build_pp.provisionprofile
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         APIKEY_PATH=$RUNNER_TEMP/AuthKey.p8
         KEYCHAIN_PASSWORD=keychain-password
 
-        # import certificate and provisioning profile from secrets
+        # import certificate and API key from secrets
         echo -n "${{ inputs.macos_certificate_base64 }}" | base64 --decode -o $CERTIFICATE_PATH
-        echo -n "${{ inputs.macos_provisioning_profile_base64 }}" | base64 --decode -o $PP_PATH
         echo -n "${{ inputs.macos_api_key_base64 }}" | base64 --decode -o $APIKEY_PATH
 
         # create temporary keychain
@@ -119,10 +112,6 @@ runs:
 
         # add notarytool credentials
         xcrun notarytool store-credentials 'notary' --key "$APIKEY_PATH" --key-id "${{ inputs.macos_api_key_id }}" --issuer "${{ inputs.macos_api_key_issuer }}"
-
-        # apply provisioning profile
-        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
       shell: bash
     - name: 'Build application (Linux)'
       if: ${{ runner.os == 'Linux' }}
