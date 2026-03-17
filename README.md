@@ -52,6 +52,7 @@ jobs:
         id: build
         with:
             channel: experimental
+            upgrade_key: pear://jj7jywoj83pswtcf5asywbm4ngro3xikgg1zcaqq3kdyhghats6o
 ```
 
 ### macOS
