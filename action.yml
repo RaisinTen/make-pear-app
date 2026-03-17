@@ -65,14 +65,14 @@ runs:
     - name: 'Install dependencies (Linux/macOS)'
       if: ${{ runner.os != 'Windows' }}
       env:
-        NODE_AUTH_TOKEN: ${{ github.token }}
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         npm install
       shell: bash
     - name: 'Install dependencies (Windows)'
       if: ${{ runner.os == 'Windows' }}
       env:
-        NODE_AUTH_TOKEN: ${{ github.token }}
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         npm install
       shell: pwsh
@@ -100,6 +100,7 @@ runs:
     - name: 'Build application (Linux)'
       if: ${{ runner.os == 'Linux' }}
       env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CHANNEL: "${{ inputs.channel }}"
         UPGRADE_KEY: "${{ inputs.upgrade_key != '' && inputs.upgrade_key || null }}"
       run: |
@@ -108,6 +109,7 @@ runs:
     - name: 'Build application (macOS)'
       if: ${{ runner.os == 'macOS' }}
       env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CHANNEL: "${{ inputs.channel }}"
         UPGRADE_KEY: "${{ inputs.upgrade_key != '' && inputs.upgrade_key || null }}"
         MAC_CODESIGN_IDENTITY: "${{ inputs.macos_codesign_identity }}"
@@ -117,6 +119,7 @@ runs:
     - name: 'Build application (Windows)'
       if: ${{ runner.os == 'Windows' }}
       env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CHANNEL: "${{ inputs.channel }}"
         UPGRADE_KEY: "${{ inputs.upgrade_key != '' && inputs.upgrade_key || null }}"
         WIN_SUBJECT: "${{ inputs.windows_subject }}"
