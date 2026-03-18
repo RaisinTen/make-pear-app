@@ -20,6 +20,9 @@ inputs:
     description: 'Code signing identity used for macOS builds'
     required: false
     default: ''
+  macos_notarization_method:
+    description: 'Notarization method to use: appstore_connect or apple_id_password'
+    required: true
   macos_apple_id:
     description: 'Apple ID email for notarization'
     required: false
@@ -30,6 +33,18 @@ inputs:
     default: ''
   macos_apple_team_id:
     description: 'Apple Developer Team ID'
+    required: false
+    default: ''
+  macos_api_key_base64:
+    description: 'Base64-encoded App Store Connect API key (like AuthKey_ABCD123456.p8)'
+    required: false
+    default: ''
+  macos_api_key_id:
+    description: '10-character alphanumeric ID string of the App Store Connect (like ABCD123456)'
+    required: false
+    default: ''
+  macos_api_issuer:
+    description: 'UUID that identifies the API key issuer'
     required: false
     default: ''
   windows_subject:
@@ -51,14 +66,38 @@ runs:
       if: ${{ runner.os == 'macOS' }}
       run: |
         MISSING=""
+
+        # Always required for signing
         [ -z "${{ inputs.macos_certificate_base64 }}" ] && MISSING="$MISSING macos_certificate_base64"
         [ -z "${{ inputs.macos_p12_password }}" ] && MISSING="$MISSING macos_p12_password"
         [ -z "${{ inputs.macos_codesign_identity }}" ] && MISSING="$MISSING macos_codesign_identity"
-        [ -z "${{ inputs.macos_apple_id }}" ] && MISSING="$MISSING macos_apple_id"
-        [ -z "${{ inputs.macos_apple_password }}" ] && MISSING="$MISSING macos_apple_password"
-        [ -z "${{ inputs.macos_apple_team_id }}" ] && MISSING="$MISSING macos_apple_team_id"
-        if [ -n "$MISSING" ]; then
-          echo "Error: Missing macOS inputs:$MISSING"
+        [ -z "${{ inputs.macos_notarization_method }}" ] && MISSING="$MISSING macos_notarization_method"
+
+        # Validate notarization fields based on selected method
+        case "${{ inputs.macos_notarization_method }}" in
+          appstore_connect)
+            [ -z "${{ inputs.macos_api_key_base64 }}" ] && MISSING="$MISSING macos_api_key_base64"
+            [ -z "${{ inputs.macos_api_key_id }}" ] && MISSING="$MISSING macos_api_key_id"
+            [ -z "${{ inputs.macos_api_issuer }}" ] && MISSING="$MISSING macos_api_issuer"
+            ;;
+          apple_id_password)
+            [ -z "${{ inputs.macos_apple_id }}" ] && MISSING="$MISSING macos_apple_id"
+            [ -z "${{ inputs.macos_apple_password }}" ] && MISSING="$MISSING macos_apple_password"
+            [ -z "${{ inputs.macos_apple_team_id }}" ] && MISSING="$MISSING macos_apple_team_id"
+            ;;
+          *)
+            INVALID_METHOD="true"
+        esac
+
+        if [ "$INVALID_METHOD" = "true" ]; then
+          echo "Error: Invalid macos_notarization_method '${{ inputs.macos_notarization_method }}'. Must be 'appstore_connect' or 'apple_id_password'."
+        fi
+
+        # Fail if any required fields are missing or invalid
+        if [ -n "$MISSING" ] || [ "$INVALID_METHOD" = "true" ]; then
+          if [ -n "$MISSING" ]; then
+            echo "Error: Missing macOS inputs: ${MISSING# }"
+          fi
           exit 1
         fi
       shell: bash
@@ -91,17 +130,18 @@ runs:
       run: |
         npm install
       shell: pwsh
-    - name: 'Install the Apple certificate and provisioning profile'
+    - name: 'Install the Apple certificate and notarytool credentials'
+      id: keychain_notary_setup
       if: ${{ runner.os == 'macOS' }}
       run: |
         # create variables
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
         KEYCHAIN_PASSWORD=keychain-password
+        KEYCHAIN_PROFILE=notary
 
-        # import certificate from secrets
+        # import certificate and API key from secrets
         echo -n "${{ inputs.macos_certificate_base64 }}" | base64 --decode -o $CERTIFICATE_PATH
-
         # create temporary keychain
         security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
         security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
@@ -111,6 +151,27 @@ runs:
         security import $CERTIFICATE_PATH -P "${{ inputs.macos_p12_password }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
+
+        # add notarytool credentials
+        if [ "${{ inputs.macos_notarization_method }}" = "appstore_connect" ]; then
+          APIKEY_PATH=$RUNNER_TEMP/AuthKey.p8
+
+          echo -n "${{ inputs.macos_api_key_base64 }}" | base64 --decode -o $APIKEY_PATH
+
+          xcrun notarytool store-credentials "$KEYCHAIN_PROFILE" \
+            --key "$APIKEY_PATH" \
+            --key-id "${{ inputs.macos_api_key_id }}" \
+            --issuer "${{ inputs.macos_api_issuer }}" \
+            --keychain "$KEYCHAIN_PATH"
+        else
+          xcrun notarytool store-credentials "$KEYCHAIN_PROFILE" \
+            --apple-id "${{ inputs.macos_apple_id }}" \
+            --password "${{ inputs.macos_apple_password }}" \
+            --team-id "${{ inputs.macos_apple_team_id }}" \
+            --keychain "$KEYCHAIN_PATH"
+        fi
+
+        echo "KEYCHAIN_PROFILE=$KEYCHAIN_PROFILE" >> $GITHUB_OUTPUT
       shell: bash
     - name: 'Build application (Linux)'
       if: ${{ runner.os == 'Linux' }}
@@ -128,9 +189,7 @@ runs:
         CHANNEL: "${{ inputs.channel }}"
         UPGRADE_KEY: "${{ inputs.upgrade_key != '' && inputs.upgrade_key || null }}"
         MAC_CODESIGN_IDENTITY: "${{ inputs.macos_codesign_identity }}"
-        APPLE_ID: "${{ inputs.macos_apple_id }}"
-        APPLE_PASSWORD: "${{ inputs.macos_apple_password }}"
-        APPLE_TEAM_ID: "${{ inputs.macos_apple_team_id }}"
+        KEYCHAIN_PROFILE: ${{ steps.keychain_notary_setup.outputs.KEYCHAIN_PROFILE }}
       run: |
         npm run make
       shell: bash

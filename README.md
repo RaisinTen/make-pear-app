@@ -18,9 +18,13 @@ GitHub Action to build Pear apps on Linux, macOS, and Windows, with code signing
 | `macos_certificate_base64` | Base64 Apple distribution certificate (P12) | Required on macOS |
 | `macos_p12_password` | Password for the P12 certificate | Required on macOS |
 | `macos_codesign_identity` | Code signing identity | Required on macOS |
-| `macos_apple_id` | Apple ID email for notarization | Required on macOS |
-| `macos_apple_password` | Apple app-specific password | Required on macOS |
-| `macos_apple_team_id` | Apple Developer Team ID | Required on macOS |
+| `macos_notarization_method` | Notarization method to use: `appstore_connect` or `apple_id_password` | Required on macOS |
+| `macos_apple_id` | Apple ID email for notarization | Required on macOS if `macos_notarization_method` is `apple_id_password` |
+| `macos_apple_password` | Apple app-specific password | Required on macOS if `macos_notarization_method` is `apple_id_password` |
+| `macos_apple_team_id` | Apple Developer Team ID | Required on macOS if `macos_notarization_method` is `apple_id_password` |
+| `macos_api_key_base64` | Base64-encoded App Store Connect API key (like AuthKey_ABCD123456.p8) | Required on macOS if `macos_notarization_method` is `appstore_connect` |
+| `macos_api_key_id` | 10-character alphanumeric ID string of the App Store Connect (like ABCD123456) | Required on macOS if `macos_notarization_method` is `appstore_connect` |
+| `macos_api_issuer` | UUID that identifies the API key issuer | Required on macOS if `macos_notarization_method` is `appstore_connect` |
 
 ### Windows
 
@@ -75,6 +79,7 @@ jobs:
           macos_certificate_base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
           macos_p12_password: ${{ secrets.APPLE_P12_PASSWORD }}
           macos_codesign_identity: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+          macos_notarization_method: apple_id_password
           macos_apple_id: ${{ secrets.APPLE_ID }}
           macos_apple_password: ${{ secrets.APPLE_PASSWORD }}
           macos_apple_team_id: ${{ secrets.APPLE_TEAM_ID }}
